@@ -55,7 +55,7 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-
+.vscode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -68,6 +68,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Built Visual Studio Code Extensions
 *.vsix
+
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839

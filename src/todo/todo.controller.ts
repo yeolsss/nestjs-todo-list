@@ -25,7 +25,7 @@ export class TodoController {
   @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Req() req, @Query('title') title?: string) {
-    const email = req.user.email; // JWT 가드에서 설정한 사용자 정보 사용
+    const email = req.user.email;
     return this.todoService.findAll(email, title);
   }
 
@@ -59,5 +59,12 @@ export class TodoController {
   remove(@Req() req, @Param('id') id: string) {
     const email = req.user.email;
     return this.todoService.remove(email, +id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('toggle/:id')
+  toggle(@Req() req, @Param('id') id: string) {
+    const email = req.user.email;
+    return this.todoService.toggle(email, +id);
   }
 }

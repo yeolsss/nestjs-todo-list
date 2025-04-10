@@ -3,7 +3,6 @@ import { CreateDateColumn, UpdateDateColumn, VersionColumn } from 'typeorm';
 
 export class BaseTable {
   @CreateDateColumn()
-  @Exclude()
   createAt: Date;
 
   @UpdateDateColumn()

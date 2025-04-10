@@ -20,38 +20,28 @@ export class TodoService {
   ) {}
 
   async findAll(email: string, title?: string) {
-    /*  return await Promise.all([
-      !title
-        ? await this.todoRepository.find({
-            where: {
-              user: {
-                email,
-              },
-            },
-            relations: ['user'],
-          })
-        : await this.todoRepository.find({
-            where: {
-              title: ILike(`%${title}%`),
-              user: {
-                email,
-              },
-            },
-            relations: ['user'],
-          }),
-      await this.todoRepository.count(),
-    ]); */
-
     const qb = await this.todoRepository
       .createQueryBuilder('todo')
+      .leftJoinAndSelect('todo.detail', 'todo_detail')
       .leftJoinAndSelect('todo.user', 'user')
-      .where('user.email = :email', { email });
+      .where('user.email = :email', { email })
+      .orderBy('todo.isDone', 'ASC') // false가 먼저 오도록 ASC 정렬 (false는 0, true는 1이므로)
+      .addOrderBy('todo.createAt', 'DESC'); // 각 그룹 내에서 최신순으로 정렬
 
     if (title) {
       qb.andWhere('todo.title LIKE :title', { title: `%${title}%` });
     }
 
-    return await qb.getManyAndCount();
+    const [todos, count] = await qb.getManyAndCount();
+
+    // Count todos by isDone status
+    const completedCount = todos.filter((todo) => todo.isDone).length;
+
+    return {
+      todos,
+      count,
+      completedCount,
+    };
   }
 
   async findOne(email: string, id: number) {
@@ -123,5 +113,14 @@ export class TodoService {
 
     await this.todoRepository.delete(id);
     return id;
+  }
+  async toggle(email: string, id: number) {
+    const todo = await this.findOne(email, id);
+    const updatedTodo = await this.todoRepository.save({
+      ...todo,
+      isDone: !todo.isDone,
+    });
+
+    return updatedTodo;
   }
 }

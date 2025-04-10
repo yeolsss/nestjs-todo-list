@@ -3,8 +3,11 @@ import {
   Controller,
   Headers,
   Post,
+  Req,
+  Res,
   UseInterceptors,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -18,16 +21,26 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Headers('authorization') token: string) {
-    return this.authService.login(token);
+  async login(
+    @Headers('authorization') token: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.login(token, response);
   }
 
   @Post('token/issue')
-  async rotateAccessToken(@Headers('authorization') token: string) {
-    const payload = await this.authService.parseBearerToken(token, true);
+  async rotateAccessToken(@Req() request: Request) {
+    const refreshToken = request.headers.cookie;
+    const payload = await this.authService.parseRefreshToken(refreshToken);
+    const user = { email: payload.sub };
 
     return {
-      accessToken: await this.authService.issueToken(payload, false),
+      accessToken: await this.authService.issueToken(user, false),
     };
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) response: Response) {
+    return this.authService.logout(response);
   }
 }

@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { envVariableKeys } from 'src/comm/const/env.const';
 import { JwtService } from '@nestjs/jwt';
 import { splitToken, validateEmail } from 'src/comm/util/util';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -44,7 +45,7 @@ export class AuthService {
 
     const [email, password] = tokenSplit;
 
-    if (validateEmail(email)) {
+    if (!validateEmail(email)) {
       throw new BadRequestException('유효한 이메일 형식이 아닙니다.');
     }
 
@@ -52,6 +53,39 @@ export class AuthService {
       email,
       password,
     };
+  }
+
+  async parseRefreshToken(rawToken: string) {
+    const cookieArray = rawToken.split(';').map((cookie) => cookie.trim());
+    const refreshTokenCookie = cookieArray.find((cookie) =>
+      cookie.startsWith('refreshToken='),
+    );
+
+    if (!refreshTokenCookie) {
+      throw new BadRequestException('토큰 포멧이 잘못됐습니다.');
+    }
+
+    const refreshToken = refreshTokenCookie.split('=');
+    if (refreshToken.length !== 2) {
+      throw new BadRequestException('토큰 포멧이 잘못됐습니다.');
+    }
+
+    const [refresh, token] = refreshToken;
+
+    if (refresh.toLowerCase() !== 'refreshtoken') {
+      throw new BadRequestException('토큰 포멧이 잘못됐습니다.');
+    }
+    try {
+      const payload = await this.jwtService.verify(token, {
+        secret: this.configService.get<string>(
+          envVariableKeys.refreshTokenSecret,
+        ),
+      });
+
+      return payload;
+    } catch (e) {
+      throw new UnauthorizedException(e);
+    }
   }
 
   async parseBearerToken(
@@ -102,12 +136,12 @@ export class AuthService {
 
     return await this.jwtService.signAsync(
       {
-        sub: user.id,
+        sub: user.email,
         type: isRefreshToken ? 'refresh' : 'access',
       },
       {
         secret: isRefreshToken ? refreshTokenSecret : accessTokenSecret,
-        expiresIn: isRefreshToken ? '24h' : '24h',
+        expiresIn: isRefreshToken ? '30d' : '3h',
       },
     );
   }
@@ -121,7 +155,6 @@ export class AuthService {
 
     try {
       const payload = await this.jwtService.verifyAsync(token, { secret });
-
       // 토큰 타입 검증
       if (
         (isRefreshToken && payload.type !== 'refresh') ||
@@ -132,7 +165,7 @@ export class AuthService {
 
       // 사용자 정보 추출
       const user = await this.userRepository.findOne({
-        where: { id: payload.sub },
+        where: { email: payload.sub },
       });
 
       if (!user) {
@@ -190,14 +223,48 @@ export class AuthService {
     return user;
   }
 
-  async login(rawToken: string) {
+  async login(rawToken: string, response: Response) {
     const { email, password } = this.parseBasicToken(rawToken);
 
     const user = await this.authenticate(email, password);
 
+    const refreshToken = await this.issueToken(user, true);
+    const accessToken = await this.issueToken(user, false);
+
+    const envMode =
+      this.configService.get<string>(envVariableKeys.env) !== 'dev';
+
+    // 쿠키 이름에서 역따옴표 제거 및 옵션 조정
+    response.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: envMode ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
     return {
-      refreshToken: await this.issueToken(user, true),
-      accessToken: await this.issueToken(user, false),
+      accessToken,
+      user: {
+        email: user.email,
+      },
+    };
+  }
+
+  async logout(response: Response) {
+    const envMode =
+      this.configService.get<string>(envVariableKeys.env) !== 'dev';
+    response.cookie('refreshToken', '', {
+      httpOnly: true,
+      secure: false,
+      sameSite: envMode ? 'strict' : 'lax',
+      expires: new Date(0), // 과거 날짜로 설정하여 즉시 만료
+      path: '/',
+    });
+
+    return {
+      success: true,
+      message: '로그아웃 되었습니다.',
     };
   }
 }

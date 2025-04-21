@@ -6,65 +6,57 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
-  Req,
   Query,
   UseInterceptors,
   ClassSerializerInterceptor,
+  Request,
 } from '@nestjs/common';
 import { TodoService } from './todo.service';
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 
 @Controller('todos')
 @UseInterceptors(ClassSerializerInterceptor)
 export class TodoController {
   constructor(private readonly todoService: TodoService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Get()
-  findAll(@Req() req, @Query('title') title?: string) {
-    const email = req.user.email;
+  findAll(@Request() req2, @Query('title') title?: string) {
+    const email = req2.user.sub;
     return this.todoService.findAll(email, title);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Req() req, @Param('id') id: string) {
-    const email = req.user.email;
+  findOne(@Request() req, @Param('id') id: string) {
+    const email = req.user.sub;
     return this.todoService.findOne(email, +id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Req() req, @Body() createTodoDto: CreateTodoDto) {
-    const email = req.user.email;
+  create(@Request() req, @Body() createTodoDto: CreateTodoDto) {
+    const email = req.user.sub;
     return this.todoService.create(email, createTodoDto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
-    @Req() req,
+    @Request() req,
     @Param('id') id: string,
     @Body() updateTodoDto: UpdateTodoDto,
   ) {
-    const email = req.user.email;
+    const email = req.user.sub;
     return this.todoService.update(email, +id, updateTodoDto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Req() req, @Param('id') id: string) {
-    const email = req.user.email;
+  remove(@Request() req, @Param('id') id: string) {
+    const email = req.user.sub;
     return this.todoService.remove(email, +id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch('toggle/:id')
-  toggle(@Req() req, @Param('id') id: string) {
-    const email = req.user.email;
+  toggle(@Request() req, @Param('id') id: string) {
+    const email = req.user.sub;
     return this.todoService.toggle(email, +id);
   }
 }

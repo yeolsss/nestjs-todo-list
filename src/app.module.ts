@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { UserModule } from './user/user.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as Joi from 'joi';
@@ -9,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { TodoModule } from './todo/todo.module';
 import { Todo } from './todo/entity/todo.entity';
 import { TodoDetail } from './todo/entity/todo-detail.entity';
+import { BearerTokenMiddleWare } from './auth/middleware/bearer-token.middleware';
 
 @Module({
   imports: [
@@ -49,4 +55,15 @@ import { TodoDetail } from './todo/entity/todo-detail.entity';
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(BearerTokenMiddleWare)
+      .exclude(
+        { path: 'auth/login', method: RequestMethod.POST },
+        { path: 'auth', method: RequestMethod.POST },
+      )
+
+      .forRoutes('*');
+  }
+}

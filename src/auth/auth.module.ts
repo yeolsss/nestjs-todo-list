@@ -15,6 +15,6 @@ import { AuthController } from './auth.controller';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],
-  exports: [AuthService, JwtAuthGuard], // 다른 모듈에서 사용할 수 있도록 내보내기
+  exports: [AuthService, JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}
